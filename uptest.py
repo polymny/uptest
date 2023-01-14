@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 from config import urls
-from requests import get
+import requests
+from threading import Thread
 
 def print_green(string):
     print('\x1B[32m' + str(string) + '\x1B[0m', end = '')
 
 def print_red(string):
     print('\x1B[31m' + str(string) + '\x1B[0m', end = '')
+
+def get(url):
+    global get_response
+    get_response = requests.get(url)
 
 class Site:
     def __init__(self, url):
@@ -25,17 +31,22 @@ class Site:
     def __unicode__(self):
         return self.__str__()
 
-    def get(self):
-        return get(self.url)
+    def get(self, url):
+        global get_response
+        get_response = None
+        thread = Thread(target = get, args = [url])
+        thread.start()
+        thread.join(timeout = 5)
+        return get_response
 
     def test(self):
         print('[  ] ' + str(self) + '... ', end = '')
         sys.stdout.flush()
-        self.http_response = get('http://' + self.url)
-        self.https_response = get('https://' + self.url)
+        self.http_response = self.get('http://' + self.url)
+        self.https_response = self.get('https://' + self.url)
 
-        self.http_success = 200 <= self.http_response.status_code < 300
-        self.https_success = 200 <= self.https_response.status_code < 300
+        self.http_success = 200 <= (self.http_response.status_code if self.http_response is not None else 0)< 300
+        self.https_success = 200 <= (self.https_response.status_code if self.https_response is not None else 0)< 300
         self.success = self.http_success and self.https_success
 
         print('\r[', end = '')
@@ -49,10 +60,10 @@ class Site:
         if not self.success:
             errors = []
             if not self.http_success:
-                errors.append('http server returned ' + str(self.http_response.status_code))
+                errors.append('http server returned ' + str(self.http_response.status_code if self.http_response is not None else 'timeout'))
 
             if not self.https_success:
-                errors.append('https server returned ' + str(self.https_response.status_code))
+                errors.append('https server returned ' + str(self.https_response.status_code if self.https_response is not None else 'timeout'))
 
             print_red(' ' + ', '.join(errors) +'\n')
 
@@ -88,8 +99,7 @@ def main():
     print()
     sites.summary()
 
-    if not sites.success():
-        sys.exit(1)
+    os._exit(1 if not sites.success() else 0)
 
 if __name__ == '__main__':
     main()
