@@ -2,9 +2,11 @@
 
 import sys
 import os
-from config import urls
+import config
 import requests
 from threading import Thread
+import smtplib
+import ssl
 
 def print_green(string):
     print('\x1B[32m' + str(string) + '\x1B[0m', end = '')
@@ -15,6 +17,16 @@ def print_red(string):
 def get(url):
     global get_response
     get_response = requests.get(url)
+
+class Mailer:
+    def __init__(self, mailer_config):
+        self.config = mailer_config
+
+    def send_mail(self, message):
+        self.context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(self.config["host"], self.config["port"], context = self.context) as server:
+            server.login(self.config["username"], self.config["password"])
+            server.sendmail(self.config["username"], self.config["dest"], message)
 
 class Site:
     def __init__(self, url):
@@ -45,8 +57,8 @@ class Site:
         self.http_response = self.get('http://' + self.url)
         self.https_response = self.get('https://' + self.url)
 
-        self.http_success = 200 <= (self.http_response.status_code if self.http_response is not None else 0)< 300
-        self.https_success = 200 <= (self.https_response.status_code if self.https_response is not None else 0)< 300
+        self.http_success = 200 <= (self.http_response.status_code if self.http_response is not None else 0) < 300
+        self.https_success = 200 <= (self.https_response.status_code if self.https_response is not None else 0) < 300
         self.success = self.http_success and self.https_success
 
         print('\r[', end = '')
@@ -70,9 +82,10 @@ class Site:
         else:
             print()
 
-class Sites:
-    def __init__(self, urls):
+class Tester:
+    def __init__(self, mailer_config, urls):
         self.failures = []
+        self.mailer = Mailer(mailer_config)
         self.sites = map(Site, urls)
 
     def test(self):
@@ -84,22 +97,31 @@ class Sites:
 
     def summary(self):
         if len(self.failures) == 0:
-            print('--- SUCCESS ---')
+            return '--- SUCCESS ---'
         else:
-            print('--- FAILURE SUMMARY: ' + str(len(self.failures)) + ' FAILURE' + ('' if len(self.failures) == 1 else 'S') + ' ---')
+            content = '--- FAILURE SUMMARY: ' + str(len(self.failures)) + ' FAILURE' + ('' if len(self.failures) == 1 else 'S') + ' ---\n'
             for site in self.failures:
-                print(site)
+                content += site.url.replace(".", "-") + '\n'
+            return content
+
+    def notify(self):
+        self.mailer.send_mail("Subject: Errors occured in uptest\n\n" + self.summary())
 
     def success(self):
         return len(self.failures) == 0
 
 def main():
-    sites = Sites(urls)
-    sites.test()
+    tester = Tester(config.mailer, config.urls)
+    tester.test()
     print()
-    sites.summary()
+    print(tester.summary())
 
-    os._exit(1 if not sites.success() else 0)
+    if not tester.success():
+        tester.notify()
+        # os._exit(1)
+    else:
+        pass
+        # os._exit(0)
 
 if __name__ == '__main__':
     main()
