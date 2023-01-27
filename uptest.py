@@ -68,7 +68,7 @@ class Site:
         get_response = None
         thread = Thread(target = get, args = [url])
         thread.start()
-        thread.join(timeout = 5)
+        thread.join(timeout = 10)
         return get_response
 
     def test(self):
