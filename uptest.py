@@ -7,6 +7,8 @@ import requests
 from threading import Thread
 import smtplib
 import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 def print_green(string):
     print('\x1B[32m' + str(string) + '\x1B[0m', end = '')
@@ -18,6 +20,21 @@ def get(url):
     global get_response
     get_response = requests.get(url)
 
+def test_code(response):
+    return 200 <= (response.status_code if response is not None else 0) < 300
+
+def info(response):
+    return str(response.status_code if response is not None else 'timeout')
+
+def info_html(response):
+    if response is not None:
+        if test_code(response):
+            return '<span style="color: green;">' + str(response.status_code) + '</span>'
+        else:
+            return '<span style="color: red;">' + str(response.status_code) + '</span>'
+    else:
+        return '<span style="color: red;">timeout</span>'
+
 class Mailer:
     def __init__(self, mailer_config):
         self.config = mailer_config
@@ -26,7 +43,7 @@ class Mailer:
         self.context = ssl.create_default_context()
         with smtplib.SMTP_SSL(self.config["host"], self.config["port"], context = self.context) as server:
             server.login(self.config["username"], self.config["password"])
-            server.sendmail(self.config["username"], self.config["dest"], message)
+            server.sendmail(self.config["username"], self.config["dest"], message.as_string())
 
 class Site:
     def __init__(self, url):
@@ -57,8 +74,8 @@ class Site:
         self.http_response = self.get('http://' + self.url)
         self.https_response = self.get('https://' + self.url)
 
-        self.http_success = 200 <= (self.http_response.status_code if self.http_response is not None else 0) < 300
-        self.https_success = 200 <= (self.https_response.status_code if self.https_response is not None else 0) < 300
+        self.http_success = test_code(self.http_response)
+        self.https_success = test_code(self.https_response)
         self.success = self.http_success and self.https_success
 
         print('\r[', end = '')
@@ -72,10 +89,10 @@ class Site:
         if not self.success:
             errors = []
             if not self.http_success:
-                errors.append('http server returned ' + str(self.http_response.status_code if self.http_response is not None else 'timeout'))
+                errors.append('http server returned ' + info(self.http_response))
 
             if not self.https_success:
-                errors.append('https server returned ' + str(self.https_response.status_code if self.https_response is not None else 'timeout'))
+                errors.append('https server returned ' + info(self.https_response))
 
             print_red(' ' + ', '.join(errors) +'\n')
 
@@ -86,7 +103,7 @@ class Tester:
     def __init__(self, mailer_config, urls):
         self.failures = []
         self.mailer = Mailer(mailer_config)
-        self.sites = map(Site, urls)
+        self.sites = list(map(Site, urls))
 
     def test(self):
         for site in self.sites:
@@ -101,11 +118,62 @@ class Tester:
         else:
             content = '--- FAILURE SUMMARY: ' + str(len(self.failures)) + ' FAILURE' + ('' if len(self.failures) == 1 else 'S') + ' ---\n'
             for site in self.failures:
-                content += site.url.replace(".", "-") + '\n'
+                content += '- ' + site.url + '\n'
+            return content
+
+    def summary_html(self):
+        if len(self.failures) == 0:
+            return '<h2>Uptest passed correctly.</h2>'
+        else:
+            content = '<h2>There ' + ('was ' if len(self.failures) == 1 else 'were ')
+            content += str(len(self.failures)) + ' failure' + ('' if len(self.failures) == 1 else 's')
+            content += ' during the uptest.</h2>\n'
+            content += '<p><ul>\n'
+            for site in self.failures:
+
+                if not test_code(site.http_response) and test_code(site.https_response):
+                    content += '<li><a href="http' + site.url + '">http://' + site.url + '</a> returned '
+                    content += info(site.http_response) + ' for HTTP.</li>\n'
+
+                if not test_code(site.https_response) and test_code(site.http_response):
+                    content += '<li><a href="https' + site.url + '">https://' + site.url + '</a> returned '
+                    content += info(site.https_response) + ' for HTTPS.</li>\n'
+
+                if not test_code(site.https_response) and not test_code(site.http_response):
+                    content += '<li><a href="https' + site.url + '">https://' + site.url + '</a> returned '
+                    content += info(site.http_response) + ' for HTTP and '
+                    content += (info(site.https_response) + ' for') if info(site.http_response) != info(site.https_response) else ''
+                    content += ' HTTPS.</li>\n'
+
+            content += '</ul></p>\n'
+
+            content += '<h2>Details</h2>\n'
+            content += '<p><table style="border-collapse: collapse;">\n'
+            content += '<tr style="border-bottom: 2px solid;">'
+            content += '<th style="padding: 10px;">Page</th>'
+            content += '<th style="padding: 10px;">HTTP</th>'
+            content += '<th style="padding: 10px;">HTTPS</th>'
+            content += '</tr>\n'
+
+            for site in self.sites:
+                content += '<tr style="border-bottom: 1px solid;">'
+                content += '<td style="padding: 10px;"><a href="https://' + site.url + '">' + site.url + '</td>'
+                content += '<td style="padding: 10px;">' + info_html(site.http_response) + '</td>'
+                content += '<td style="padding: 10px;">' + info_html(site.https_response) + '</td>'
+                content += '</tr>\n'
+
+            content += '</table></p>\n'
+
             return content
 
     def notify(self):
-        self.mailer.send_mail("Subject: Errors occured in uptest\n\n" + self.summary())
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "Error occured in uptest"
+        msg['From'] = self.mailer.config["username"]
+        msg['To'] = self.mailer.config["dest"]
+        msg.attach(MIMEText(self.summary(), 'plain'))
+        msg.attach(MIMEText(self.summary_html(), 'html'))
+        self.mailer.send_mail(msg)
 
     def success(self):
         return len(self.failures) == 0
