@@ -18,7 +18,10 @@ def print_red(string):
 
 def get(url):
     global get_response
-    get_response = requests.get(url)
+    try:
+        get_response = requests.get(url)
+    except:
+        get_response = None
 
 def test_code(response):
     return 200 <= (response.status_code if response is not None else 0) < 300
@@ -179,17 +182,29 @@ class Tester:
         return len(self.failures) == 0
 
 def main():
+    failures = []
+    try:
+        with open('failures.txt', 'r') as f:
+            failures = list(map(lambda x: x[0:-1], f))
+    except:
+        pass
+
     tester = Tester(config.mailer, config.urls)
     tester.test()
     print()
     print(tester.summary())
 
-    if not tester.success():
+    new_failure = False
+    for failure in tester.failures:
+        if failure.url not in failures:
+            new_failure=True
+
+    if new_failure:
         tester.notify()
-        # os._exit(1)
-    else:
-        pass
-        # os._exit(0)
+
+    with open('failures.txt', 'w') as f:
+        f.write('\n'.join(map(lambda x: x.url, tester.failures)) + '\n')
+
 
 if __name__ == '__main__':
     main()
