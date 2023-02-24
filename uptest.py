@@ -182,10 +182,22 @@ class Tester:
         return len(self.failures) == 0
 
 def main():
-    failures = []
+    # Failed once indicate that we had an error last time, but we want the error to happen twice before notifying, so if
+    # we have an error that occurs again, we will need to notify.
+    failed_once = []
+
+    # Failed twice means that they were already notified, so we don't need to notify again.
+    failed_twice = []
+
     try:
-        with open('failures.txt', 'r') as f:
-            failures = list(map(lambda x: x[0:-1], f))
+        with open('failed_once.txt', 'r') as f:
+            failed_once = list(map(lambda x: x[0:-1], f))
+    except:
+        pass
+
+    try:
+        with open('failed_twice.txt', 'r') as f:
+            failed_twice = list(map(lambda x: x[0:-1], f))
     except:
         pass
 
@@ -195,15 +207,23 @@ def main():
     print(tester.summary())
 
     new_failure = False
+    new_failed_twice = []
+
     for failure in tester.failures:
-        if failure.url not in failures:
+
+        # It has failed once, and fails again right now, so we need to notify
+        if failure.url in failed_once and not failure.url in failed_twice:
+            new_failed_twice.append(failure.url)
             new_failure=True
 
     if new_failure:
         tester.notify()
 
-    with open('failures.txt', 'w') as f:
+    with open('failed_once.txt', 'w') as f:
         f.write('\n'.join(map(lambda x: x.url, tester.failures)) + '\n')
+
+    with open('failed_twice.txt', 'w') as f:
+        f.write('\n'.join(new_failed_twice) + '\n')
 
 
 if __name__ == '__main__':
