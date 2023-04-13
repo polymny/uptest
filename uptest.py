@@ -135,15 +135,15 @@ class Tester:
             for site in self.failures:
 
                 if not test_code(site.http_response) and test_code(site.https_response):
-                    content += '<li><a href="http' + site.url + '">http://' + site.url + '</a> returned '
+                    content += '<li><a href="http://' + site.url + '">http://' + site.url + '</a> returned '
                     content += info(site.http_response) + ' for HTTP.</li>\n'
 
                 if not test_code(site.https_response) and test_code(site.http_response):
-                    content += '<li><a href="https' + site.url + '">https://' + site.url + '</a> returned '
+                    content += '<li><a href="https://' + site.url + '">https://' + site.url + '</a> returned '
                     content += info(site.https_response) + ' for HTTPS.</li>\n'
 
                 if not test_code(site.https_response) and not test_code(site.http_response):
-                    content += '<li><a href="https' + site.url + '">https://' + site.url + '</a> returned '
+                    content += '<li><a href="https://' + site.url + '">https://' + site.url + '</a> returned '
                     content += info(site.http_response) + ' for HTTP and '
                     content += (info(site.https_response) + ' for') if info(site.http_response) != info(site.https_response) else ''
                     content += ' HTTPS.</li>\n'
@@ -191,13 +191,13 @@ def main():
 
     try:
         with open('failed_once.txt', 'r') as f:
-            failed_once = list(map(lambda x: x[0:-1], f))
+            failed_once = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
     except:
         pass
 
     try:
         with open('failed_twice.txt', 'r') as f:
-            failed_twice = list(map(lambda x: x[0:-1], f))
+            failed_twice = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
     except:
         pass
 
@@ -223,7 +223,7 @@ def main():
         f.write('\n'.join(map(lambda x: x.url, tester.failures)) + '\n')
 
     with open('failed_twice.txt', 'w') as f:
-        f.write('\n'.join(new_failed_twice) + '\n')
+        f.write('\n'.join(failed_twice + new_failed_twice) + '\n')
 
 
 if __name__ == '__main__':
