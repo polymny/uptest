@@ -223,7 +223,7 @@ def main():
         f.write('\n'.join(map(lambda x: x.url, tester.failures)) + '\n')
 
     with open('failed_twice.txt', 'w') as f:
-        f.write('\n'.join(failed_twice + new_failed_twice) + '\n')
+        f.write('\n'.join(new_failed_twice) + '\n')
 
 
 if __name__ == '__main__':
