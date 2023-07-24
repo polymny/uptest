@@ -1,0 +1,10 @@
+uptest:
+  username: contacter@polymny.studio
+  host: mail.gandi.net
+  port: 465
+  dest: contacter@polymny.studio
+  urls:
+    - m.polymny.studio
+    - m.polymny.studio/dist/js/main.min.js
+    - nuage.polymny.studio
+    - paf.polymny.studio

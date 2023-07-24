@@ -1,0 +1,35 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: uptest-cron
+spec:
+  schedule: "*/15 * * * *"
+  startingDeadlineSeconds: 180
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: service
+              image: exln6chq.gra7.container-registry.ovh.net/polymny/uptest:latest
+              env:
+                - name: USERNAME
+                  value: {{ .Values.uptest.username }}
+                - name: HOST
+                  value: {{ .Values.uptest.host }}
+                - name: PORT
+                  value: {{ .Values.uptest.port | quote }}
+                - name: DEST
+                  value: {{ .Values.uptest.dest }}
+                - name: PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: uptest
+                      key: password
+                - name: URLS
+                  value: {{ join " " .Values.uptest.urls }}
+          imagePullSecrets:
+            - name: registry-credentials
+
