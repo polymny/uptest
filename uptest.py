@@ -182,48 +182,62 @@ class Tester:
         return len(self.failures) == 0
 
 def main():
-    # Failed once indicate that we had an error last time, but we want the error to happen twice before notifying, so if
-    # we have an error that occurs again, we will need to notify.
-    failed_once = []
+    oneshot = len(sys.argv) > 1 and sys.argv[1] == "--one-shot"
 
-    # Failed twice means that they were already notified, so we don't need to notify again.
-    failed_twice = []
+    if not oneshot:
+        # Failed once indicate that we had an error last time, but we want the error to happen twice before notifying, so if
+        # we have an error that occurs again, we will need to notify.
+        failed_once = []
 
-    try:
-        with open('failed_once.txt', 'r') as f:
-            failed_once = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
-    except:
-        pass
+        # Failed twice means that they were already notified, so we don't need to notify again.
+        failed_twice = []
 
-    try:
-        with open('failed_twice.txt', 'r') as f:
-            failed_twice = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
-    except:
-        pass
+        try:
+            with open('failed_once.txt', 'r') as f:
+                failed_once = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
+        except:
+            pass
+
+        try:
+            with open('failed_twice.txt', 'r') as f:
+                failed_twice = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
+        except:
+            pass
 
     tester = Tester(config.mailer, config.urls)
     tester.test()
     print()
     print(tester.summary())
 
-    new_failure = False
-    new_failed_twice = []
+    if oneshot:
+        if len(tester.failures) > 0:
+            tester.notify()
 
-    for failure in tester.failures:
+    else:
+        new_failure = False
+        new_failed_twice = []
 
-        # It has failed once, and fails again right now, so we need to notify
-        if failure.url in failed_once and not failure.url in failed_twice:
-            new_failed_twice.append(failure.url)
-            new_failure=True
+        for failure in tester.failures:
 
-    if new_failure:
-        tester.notify()
+            if failure.url in failed_once:
 
-    with open('failed_once.txt', 'w') as f:
-        f.write('\n'.join(map(lambda x: x.url, tester.failures)) + '\n')
+                # new_failed_twice contains everything that has failed at least twice
+                new_failed_twice.append(failure.url)
 
-    with open('failed_twice.txt', 'w') as f:
-        f.write('\n'.join(new_failed_twice) + '\n')
+                # It has failed once, and fails twice for the first time
+                if not failure.url in failed_twice:
+
+                    # We need to notify
+                    new_failure=True
+
+        if new_failure:
+            tester.notify()
+
+        with open('failed_once.txt', 'w') as f:
+            f.write('\n'.join(map(lambda x: x.url, tester.failures)) + '\n')
+
+        with open('failed_twice.txt', 'w') as f:
+            f.write('\n'.join(new_failed_twice) + '\n')
 
 
 if __name__ == '__main__':

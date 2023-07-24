@@ -1,0 +1,10 @@
+version: "3.2"
+
+services:
+
+  uptest:
+    # image: $${DOCKER_REGISTRY:?}/polymny/server:$${GIT_TAG:latest}
+    image: exln6chq.gra7.container-registry.ovh.net/polymny/uptest
+    build:
+      context: .
+      target: uptest

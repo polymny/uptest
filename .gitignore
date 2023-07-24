@@ -2,3 +2,4 @@ config.py
 failures.txt
 failed_*.txt
 __pycache__
+docker-compose.override.yml
