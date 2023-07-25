@@ -13,7 +13,9 @@ spec:
           restartPolicy: Never
           containers:
             - name: service
-              image: exln6chq.gra7.container-registry.ovh.net/polymny/uptest:latest
+              {{ with .Values.image }}
+              image: {{ .registry }}/{{ .imagePrefix | default "polymny" }}/uptest:{{ .tag | default "latest" }}
+              {{- end }}
               env:
                 - name: USERNAME
                   value: {{ .Values.uptest.username }}
