@@ -32,6 +32,21 @@ spec:
                       key: password
                 - name: URLS
                   value: {{ join " " .Values.uptest.urls }}
+                {{- if .Values.uptest.s3 }}
+                - name: S3_ENDPOINT
+                  value: {{ .Values.uptest.s3.endpoint }}
+                - name: S3_REGION
+                  value: {{ .Values.uptest.s3.region }}
+                - name: S3_BUCKET
+                  value: {{ .Values.uptest.s3.bucket }}
+                - name: S3_KEY
+                  value: {{ .Values.uptest.s3.key }}
+                - name: S3_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: s3
+                      key: secret
+                {{- end }}
           imagePullSecrets:
             - name: registry-credentials
 

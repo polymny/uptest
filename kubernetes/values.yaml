@@ -11,5 +11,12 @@ uptest:
   urls:
     - m.polymny.studio
     - m.polymny.studio/dist/js/main.min.js
-    - nuage.polymny.studio
+    # - nuage.polymny.studio
     - paf.polymny.studio
+
+  s3:
+    endpoint: https://s3.gra.io.cloud.ovh.net/
+    region: gra
+    key: 915cc0e6eff747cd9211c7b74e17b4c3
+    bucket: cron-storage
+    existingSecret: s3

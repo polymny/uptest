@@ -9,6 +9,7 @@ import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import subprocess
 
 def print_green(string):
     print('\x1B[32m' + str(string) + '\x1B[0m', end = '')
@@ -181,7 +182,30 @@ class Tester:
     def success(self):
         return len(self.failures) == 0
 
+def download_s3(key):
+    subprocess.call(
+        ["aws", "--endpoint-url", config.s3.get("endpoint"), "s3", "cp", "s3://" + config.s3.get("bucket") + "/uptest/" + key, '.'],
+        env = {
+            "AWS_ACCESS_KEY_ID": config.s3.get("key"),
+            "AWS_SECRET_ACCESS_KEY": config.s3.get("secret"),
+            "AWS_DEFAULT_REGION": config.s3.get("region"),
+            "AWS_DEFAULT_REGION": config.s3.get("region"),
+        }
+    )
+
+def upload_s3(key):
+    subprocess.call(
+        ["aws", "--endpoint-url", config.s3.get("endpoint"), "s3", "cp", key, "s3://" + config.s3.get("bucket") + "/uptest/" + key],
+        env = {
+            "AWS_ACCESS_KEY_ID": config.s3.get("key"),
+            "AWS_SECRET_ACCESS_KEY": config.s3.get("secret"),
+            "AWS_DEFAULT_REGION": config.s3.get("region"),
+            "AWS_DEFAULT_REGION": config.s3.get("region"),
+        }
+    )
+
 def main():
+
     oneshot = len(sys.argv) > 1 and sys.argv[1] == "--one-shot"
 
     if not oneshot:
@@ -193,12 +217,17 @@ def main():
         failed_twice = []
 
         try:
+            if config.s3:
+                download_s3("failed_once.txt")
             with open('failed_once.txt', 'r') as f:
                 failed_once = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
+
         except:
             pass
 
         try:
+            if config.s3:
+                download_s3("failed_twice.txt")
             with open('failed_twice.txt', 'r') as f:
                 failed_twice = list(filter(lambda x: x != '', map(lambda x: x[0:-1], f)))
         except:
@@ -238,6 +267,11 @@ def main():
 
         with open('failed_twice.txt', 'w') as f:
             f.write('\n'.join(new_failed_twice) + '\n')
+
+        if config.s3:
+            upload_s3("failed_once.txt")
+            upload_s3("failed_twice.txt")
+
 
 
 if __name__ == '__main__':
