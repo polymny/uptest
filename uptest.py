@@ -73,7 +73,7 @@ class Site:
         return get_response
 
     def test(self):
-        print('[  ] ' + str(self) + '... ', end = '')
+        print(str(self) + '... ', end = '')
         sys.stdout.flush()
         self.http_response = self.get('http://' + self.url)
         self.https_response = self.get('https://' + self.url)
@@ -82,13 +82,13 @@ class Site:
         self.https_success = test_code(self.https_response)
         self.success = self.http_success and self.https_success
 
-        print('\r[', end = '')
+        print('[', end = '')
         if self.success:
             print_green('OK')
         else:
             print_red('KO')
 
-        print('] ' + str(self) + '   \b\b\b', end = '')
+        print(']', end = '')
 
         if not self.success:
             errors = []
@@ -102,6 +102,8 @@ class Site:
 
         else:
             print()
+
+        sys.stdout.flush()
 
 class Tester:
     def __init__(self, mailer_config, urls):

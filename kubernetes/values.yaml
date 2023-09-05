@@ -1,7 +1,7 @@
 image:
   app: uptest
   registry: exln6chq.gra7.container-registry.ovh.net
-  tag: 1.0.1
+  tag: 1.0.5
 
 uptest:
   username: contacter@polymny.studio
@@ -11,7 +11,7 @@ uptest:
   urls:
     - m.polymny.studio
     - m.polymny.studio/dist/js/main.min.js
-    # - nuage.polymny.studio
+    - nuage.polymny.studio
     - paf.polymny.studio
 
   s3:
@@ -19,4 +19,4 @@ uptest:
     region: gra
     key: 915cc0e6eff747cd9211c7b74e17b4c3
     bucket: cron-storage
-    existingSecret: s3
+    existingSecret: s3-cron
